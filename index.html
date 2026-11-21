@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Голосование</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@500;700&display=swap">
+<style>
+:root{--bg:#EEF0F7;--card:#fff;--ink:#1A1D3F;--muted:#585D80;--line:#D3D8EC;--brand:#2F3BA8;--on-brand:#fff;--stamp:#F2BE1F;--on-stamp:#2A2200;--ok:#17724A;--bad:#B3261E;color-scheme:light}
+@media(prefers-color-scheme:dark){:root{--bg:#12142B;--card:#1B1E3D;--ink:#ECEEFB;--muted:#9AA0C8;--line:#30346A;--brand:#98A3FF;--on-brand:#12142B;--ok:#5FD29A;--bad:#FF8A80;color-scheme:dark}}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.5 Onest,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:24px 16px 56px}
+header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:24px}
+.hb{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+h1,h2,h3{font-family:Unbounded,Onest,system-ui,sans-serif;margin:0;line-height:1.15;letter-spacing:-.01em}
+h1{font-size:clamp(26px,6.5vw,38px);font-weight:700}
+h2{font-size:22px;font-weight:700;margin-bottom:8px}
+h3{font-size:17px;font-weight:500;margin-bottom:12px}
+p{margin:0 0 12px}
+.muted,.note{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:14px}
+.btn{font:600 16px/1 Onest,system-ui,sans-serif;border:2px solid var(--brand);background:var(--brand);color:var(--on-brand);padding:14px 20px;border-radius:10px;cursor:pointer;min-height:48px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--brand)}
+.btn.sm{padding:10px 14px;min-height:40px;font-size:15px}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn:focus-visible,.opt:focus-visible,.nom:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+label{display:block;font-weight:500;margin-bottom:14px}
+input,textarea{display:block;width:100%;margin-top:6px;font:400 17px/1.4 Onest,system-ui,sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px}
+.err{color:var(--bad);font-weight:500}
+.flash{background:var(--stamp);color:var(--on-stamp);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-weight:500}
+.nom{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;text-align:left;font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:10px;cursor:pointer}
+.nom:hover{border-color:var(--brand)}
+.nom .t{font-weight:600;font-size:18px}
+.pill{font-size:14px;font-weight:500;color:var(--muted);white-space:nowrap}
+.pill.ok{color:var(--ok)}
+.opt{display:flex;width:100%;align-items:center;gap:14px;text-align:left;font:inherit;color:inherit;background:var(--card);border:2px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;min-height:56px}
+.opt.on{border-color:var(--brand)}
+.opt:disabled{cursor:default;opacity:.6}
+.opt.mine:disabled{opacity:1}
+.box{flex:none;width:28px;height:28px;border:2px solid var(--muted);border-radius:6px;display:grid;place-items:center;font-weight:700;color:var(--on-stamp)}
+.opt.on .box,.opt.mine .box{background:var(--stamp);border-color:var(--stamp);animation:stamp .22s ease-out}
+.opt.on .box::after,.opt.mine .box::after{content:"✓";transform:rotate(-8deg)}
+@keyframes stamp{from{transform:scale(1.5)}to{transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.box{animation:none!important}}
+.back{margin-bottom:16px}
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tabs .btn{flex:1}
+.row{margin-bottom:12px}
+.rl{display:flex;justify-content:space-between;gap:12px;margin-bottom:4px}
+.bar{height:10px;border-radius:5px;background:var(--bg);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--muted);border-radius:5px}
+.lead .bar i{background:var(--stamp)}
+.lead .rl{font-weight:600}
+details{margin-top:8px}
+summary{cursor:pointer;font-weight:600}
+ul.v{list-style:none;padding:0;margin:10px 0 0}
+ul.v li{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--line)}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getAuth,onAuthStateChanged,signInWithPopup,GoogleAuthProvider,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendEmailVerification,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getFirestore,doc,setDoc,onSnapshot,collection,query,where,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+/* ====== НАСТРОЙКИ: замените значения на свои ====== */
+const firebaseConfig = {
+  apiKey: "AIzaSyDlfbH9r-T0gU-s-yoa6BXPZ4hFN5GQjco",
+  authDomain: "hihi23-86cc9.firebaseapp.com",
+  projectId: "hihi23-86cc9",
+  storageBucket: "hihi23-86cc9.firebasestorage.app",
+  messagingSenderId: "316203627210",
+  appId: "1:316203627210:web:a85dff190d0be20fa53a33",
+  measurementId: "G-8M14MRKECS"
+};
+// Почта организатора (строчными буквами). Такая же — в файле firestore.rules.
+const ADMIN_EMAILS = ["glebopyx@gmail.com"];
+/* ================================================== */
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const rid=()=>Math.random().toString(36).slice(2,9);
+const S={fail:"",authReady:false,user:null,admin:false,voter:null,loaded:{voter:false,votes:false},
+  cfg:{title:"Голосование",nominations:[]},myVotes:{},votes:[],voters:[],
+  view:"home",nom:null,pick:null,adminTab:"results",draft:null,msg:"",flash:"",busy:false};
+const nom=()=>S.cfg.nominations.find(n=>n.id===S.nom);
+const authErr=e=>({
+  "auth/invalid-credential":"Неверная почта или пароль.","auth/invalid-email":"Проверьте адрес почты.",
+  "auth/email-already-in-use":"Эта почта уже зарегистрирована. Нажмите «Войти».",
+  "auth/weak-password":"Пароль слишком короткий: нужно минимум 6 символов.",
+  "auth/operation-not-allowed":"Этот способ входа не включён в Firebase (раздел Authentication).",
+  "auth/popup-closed-by-user":"Окно входа закрыто. Попробуйте ещё раз."
+}[e&&e.code]||"Не удалось войти. Проверьте интернет и попробуйте ещё раз.");
+
+if(FIREBASE_CONFIG.apiKey.startsWith("ВСТАВЬТЕ"))S.fail="Откройте index.html и вставьте настройки своего проекта Firebase в блок «НАСТРОЙКИ».";
+let auth,db;
+if(!S.fail){const app=initializeApp(FIREBASE_CONFIG);auth=getAuth(app);db=getFirestore(app)}
+
+function startDraft(){S.draft={title:S.cfg.title||"",noms:S.cfg.nominations.map(n=>({id:n.id,title:n.title,text:n.candidates.map(c=>c.name).join("\n")}))}}
+function syncDraft(){
+  if(!S.draft||!$("#ttl"))return;
+  S.draft.title=$("#ttl").value;
+  S.draft.noms=[...document.querySelectorAll(".nomrow")].map(r=>({id:r.dataset.id,title:r.querySelector(".nt").value,text:r.querySelector(".nc").value}));
+}
+
+function authView(){
+  return `<div class="card"><h2>Вход и регистрация</h2><p class="muted">Войдите, чтобы голосовать. Нового участника создаст кнопка «Создать аккаунт».</p>
+  <label>Почта<input id="em" type="email" autocomplete="email"></label>
+  <label>Пароль<input id="pw" type="password" autocomplete="current-password" placeholder="Минимум 6 символов"></label>
+  <div class="btns"><button class="btn" data-a="login" ${S.busy?"disabled":""}>Войти</button><button class="btn ghost" data-a="signup" ${S.busy?"disabled":""}>Создать аккаунт</button></div>
+  <p class="muted" style="margin:16px 0 8px">или</p><button class="btn ghost" data-a="google" ${S.busy?"disabled":""}>Войти через Google</button>
+  ${S.msg?`<p class="err" role="alert" style="margin-top:12px">${esc(S.msg)}</p>`:""}</div>`;
+}
+function regView(){
+  return `<div class="card"><h2>Как вас зовут?</h2><p class="muted">Имя увидит только организатор. В каждой номинации можно отдать один голос.</p>
+  <label>Ваше имя<input id="name" maxlength="60" autocomplete="name" placeholder="Например, Анна Петрова"></label>
+  <button class="btn" data-a="reg" ${S.busy?"disabled":""}>Продолжить</button>${S.msg?`<p class="err" role="alert">${esc(S.msg)}</p>`:""}</div>`;
+}
+function homeView(){
+  const ns=S.cfg.nominations,done=ns.filter(n=>S.myVotes[n.id]).length;
+  let h=S.flash?`<div class="flash" role="status">${esc(S.flash)}</div>`:"";
+  h+=`<p class="muted">${esc(S.voter.name)}, выберите номинацию. Вы проголосовали в ${done} из ${ns.length}.</p>`;
+  if(done===ns.length)h+=`<div class="card"><h2>Спасибо за участие</h2><p>Вы проголосовали во всех номинациях. Результаты объявит организатор.</p></div>`;
+  return h+ns.map(n=>{const v=!!S.myVotes[n.id];
+    return `<button class="nom" data-a="open" data-id="${n.id}"><span class="t">${esc(n.title)}</span><span class="pill ${v?"ok":""}">${v?"Голос отдан":"Выбрать"}</span></button>`}).join("");
+}
+function nomView(n){
+  const mine=S.myVotes[n.id];
+  let h=`<button class="btn ghost sm back" data-a="home">Все номинации</button><h2>${esc(n.title)}</h2>`;
+  h+=mine?`<p class="muted">Ваш голос принят. Изменить его нельзя.</p>`:`<p class="muted">Выберите одного кандидата и подтвердите голос.</p>`;
+  h+=n.candidates.map(c=>{
+    const cls=mine?(c.id===mine?"mine":""):(c.id===S.pick?"on":"");
+    return `<button class="opt ${cls}" data-a="pick" data-id="${c.id}" ${mine?"disabled":""} role="radio" aria-checked="${cls!==""}"><span class="box"></span><span>${esc(c.name)}</span></button>`}).join("");
+  if(!mine)h+=`<button class="btn" data-a="vote" ${S.pick&&!S.busy?"":"disabled"}>Отдать голос</button>`;
+  if(S.msg)h+=`<p class="err" role="alert">${esc(S.msg)}</p>`;
+  return h;
+}
+function adminView(){
+  let h=`<div class="tabs"><button class="btn sm ${S.adminTab==="results"?"":"ghost"}" data-a="tab" data-t="results">Результаты</button><button class="btn sm ${S.adminTab==="setup"?"":"ghost"}" data-a="tab" data-t="setup">Настройка</button></div>`;
+  if(S.adminTab==="setup"&&S.draft){
+    h+=`<div class="card"><label>Название голосования<input id="ttl" value="${esc(S.draft.title)}" maxlength="80"></label></div>`;
+    h+=S.draft.noms.map(n=>`<div class="card nomrow" data-id="${n.id}"><label>Название номинации<input class="nt" value="${esc(n.title)}" maxlength="80" placeholder="Например, лучший коллега года"></label>
+      <label>Кандидаты — каждый с новой строки<textarea class="nc" rows="4">${esc(n.text)}</textarea></label>
+      <button class="btn ghost danger sm" data-a="delnom" data-id="${n.id}">Удалить номинацию</button></div>`).join("");
+    h+=`<div class="btns"><button class="btn ghost" data-a="addnom">Добавить номинацию</button><button class="btn" data-a="save" ${S.busy?"disabled":""}>Сохранить</button></div>`;
+    h+=S.msg?`<p class="${S.msg==="Сохранено."?"":"err"}" role="status" style="margin-top:12px">${esc(S.msg)}</p>`:"";
+    return h;
+  }
+  if(!S.cfg.nominations.length)return h+`<p class="muted">Номинаций пока нет. Добавьте их на вкладке «Настройка».</p>`;
+  h+=`<p class="muted">Зарегистрировано участников: ${S.voters.length}. Результаты видны только организатору.</p>`;
+  h+=S.cfg.nominations.map(n=>{
+    const c={};let t=0;
+    S.votes.forEach(v=>{if(v.nom===n.id&&v.cand){c[v.cand]=(c[v.cand]||0)+1;t++}});
+    const rows=n.candidates.map(x=>({x,v:c[x.id]||0})).sort((a,b)=>b.v-a.v);
+    return `<div class="card"><h3>${esc(n.title)}</h3>`+rows.map((r,i)=>`<div class="row ${i===0&&r.v>0?"lead":""}"><div class="rl"><span>${esc(r.x.name)}</span><span>${r.v} (${t?Math.round(r.v/t*100):0}%)</span></div><div class="bar"><i style="width:${t?r.v/t*100:0}%"></i></div></div>`).join("")+`<p class="muted" style="margin:0">Всего голосов: ${t}</p></div>`}).join("");
+  const vs=[...S.voters].sort((a,b)=>String(a.name).localeCompare(String(b.name),"ru"));
+  h+=`<details class="card"><summary>Участники (${vs.length})</summary><ul class="v">`+vs.map(v=>`<li><span>${esc(v.name)}</span><span class="muted">${S.votes.filter(x=>x.uid===v.id).length} из ${S.cfg.nominations.length}</span></li>`).join("")+`</ul></details>`;
+  return h;
+}
+
+function render(){
+  if(S.view==="admin"&&S.adminTab==="setup")syncDraft();
+  const n=nom(),inAdmin=S.view==="admin"&&S.admin;
+  let h=`<header><h1>${esc(S.cfg.title||"Голосование")}</h1><div class="hb">`
+    +(S.admin?`<button class="btn ghost sm" data-a="${inAdmin?"home":"admin"}">${inAdmin?"К голосованию":"Организатор"}</button>`:"")
+    +(S.user?`<button class="btn ghost sm" data-a="out">Выйти</button>`:"")+`</div></header>`;
+  if(S.fail)h+=`<div class="card"><h2>Нужна настройка</h2><p>${esc(S.fail)}</p></div>`;
+  else if(!S.authReady||(S.user&&(!S.loaded.voter||!S.loaded.votes)))h+=`<p class="note">Загружаем голосование…</p>`;
+  else if(!S.user)h+=authView();
+  else if(inAdmin)h+=adminView();
+  else if(!S.cfg.nominations.length)h+=S.admin
+    ?`<div class="card"><h2>Номинаций пока нет</h2><p>Добавьте номинации и кандидатов — после этого участники смогут голосовать.</p><button class="btn" data-a="admin">Настроить голосование</button></div>`
+    :`<div class="card"><h2>Голосование ещё не открыто</h2><p>Организатор пока не добавил номинации. Загляните позже.</p></div>`;
+  else if(!S.voter)h+=regView();
+  else if(S.view==="nom"&&n)h+=nomView(n);
+  else h+=homeView();
+  $("#app").innerHTML=h;
+}
+const typing=()=>{const a=document.activeElement;return a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA")};
+const fresh=()=>{if(!typing())render()};
+const dbErr=()=>{S.fail="Нет доступа к базе данных. Проверьте, что правила из файла firestore.rules опубликованы в Firebase, а настройки проекта в index.html верны.";render()};
+
+async function run(fn,onErr){S.busy=true;S.msg="";render();try{await fn()}catch(e){S.msg=onErr(e)}S.busy=false}
+const login=()=>run(()=>signInWithEmailAndPassword(auth,$("#em").value.trim(),$("#pw").value),authErr);
+const signup=()=>run(async()=>{
+  const c=await createUserWithEmailAndPassword(auth,$("#em").value.trim(),$("#pw").value);
+  sendEmailVerification(c.user).catch(()=>{});
+},authErr);
+const google=()=>run(()=>signInWithPopup(auth,new GoogleAuthProvider()),authErr);
+const register=()=>{
+  const name=$("#name").value.trim();
+  if(name.length<2){S.msg="Введите имя — минимум 2 символа.";return}
+  return run(()=>setDoc(doc(db,"voters",S.user.uid),{name,at:serverTimestamp()}),()=>"Не удалось сохранить имя. Попробуйте ещё раз.");
+};
+const vote=()=>{
+  const n=nom();if(!n||!S.pick||S.myVotes[n.id])return;
+  return run(async()=>{
+    await setDoc(doc(db,"votes",n.id+"_"+S.user.uid),{uid:S.user.uid,nom:n.id,cand:S.pick,at:serverTimestamp()});
+    S.flash="Голос в номинации «"+n.title+"» принят.";S.pick=null;S.view="home";
+  },()=>"Не удалось отдать голос. Возможно, вы уже голосовали в этой номинации.");
+};
+const save=()=>{
+  syncDraft();
+  const noms=S.draft.noms.filter(n=>n.title.trim()).map(n=>{
+    const old=S.cfg.nominations.find(x=>x.id===n.id),seen=new Set();
+    const candidates=n.text.split("\n").map(s=>s.trim()).filter(s=>s&&!seen.has(s)&&seen.add(s))
+      .map(name=>({id:(old&&old.candidates.find(c=>c.name===name)||{}).id||rid(),name}));
+    return {id:n.id,title:n.title.trim(),candidates};
+  });
+  return run(async()=>{
+    await setDoc(doc(db,"config","main"),{title:S.draft.title.trim()||"Голосование",nominations:noms});
+    S.msg="Сохранено.";
+  },()=>"Не удалось сохранить. Проверьте правила Firestore и интернет.");
+};
+
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-a]");if(!b)return;
+  const a=b.dataset.a,d=b.dataset;
+  if(a==="open"){S.nom=d.id;S.pick=null;S.view="nom";S.msg="";S.flash=""}
+  else if(a==="home"){S.view="home";S.msg=""}
+  else if(a==="pick"){S.pick=d.id}
+  else if(a==="vote")await vote();
+  else if(a==="reg")await register();
+  else if(a==="login")await login();
+  else if(a==="signup")await signup();
+  else if(a==="google")await google();
+  else if(a==="out"){await signOut(auth);return}
+  else if(a==="admin"){S.view="admin";S.msg="";S.adminTab=S.cfg.nominations.length?"results":"setup";if(S.adminTab==="setup")startDraft()}
+  else if(a==="tab"){syncDraft();S.msg="";S.adminTab=d.t;if(d.t==="setup")startDraft();else S.draft=null}
+  else if(a==="addnom"){syncDraft();S.draft.noms.push({id:rid(),title:"",text:""})}
+  else if(a==="delnom"){syncDraft();S.draft.noms=S.draft.noms.filter(n=>n.id!==d.id)}
+  else if(a==="save"){await save();startDraft()}
+  render();
+});
+
+render();
+if(!S.fail){
+  onSnapshot(doc(db,"config","main"),s=>{
+    const d=s.exists()?s.data():{};
+    S.cfg={title:d.title||"Голосование",nominations:Array.isArray(d.nominations)?d.nominations:[]};
+    fresh();
+  },dbErr);
+  let unsubs=[];
+  onAuthStateChanged(auth,u=>{
+    unsubs.forEach(f=>f());unsubs=[];
+    Object.assign(S,{authReady:true,user:u,admin:false,voter:null,myVotes:{},votes:[],voters:[],view:"home",msg:"",flash:"",loaded:{voter:false,votes:false}});
+    if(u){
+      S.admin=!!(u.emailVerified&&u.email&&ADMIN_EMAILS.includes(u.email.toLowerCase()));
+      unsubs.push(onSnapshot(doc(db,"voters",u.uid),s=>{S.voter=s.exists()?s.data():null;S.loaded.voter=true;fresh()},dbErr));
+      unsubs.push(onSnapshot(query(collection(db,"votes"),where("uid","==",u.uid)),q=>{
+        S.myVotes={};q.forEach(x=>{const v=x.data();S.myVotes[v.nom]=v.cand});S.loaded.votes=true;fresh()},dbErr));
+      if(S.admin){
+        unsubs.push(onSnapshot(collection(db,"votes"),q=>{S.votes=q.docs.map(x=>x.data());fresh()},dbErr));
+        unsubs.push(onSnapshot(collection(db,"voters"),q=>{S.voters=q.docs.map(x=>({id:x.id,...x.data()}));fresh()},dbErr));
+      }
+    }
+    render();
+  });
+}
+</script>
+</body>
+</html>
